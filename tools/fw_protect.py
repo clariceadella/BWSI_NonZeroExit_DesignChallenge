@@ -5,7 +5,7 @@ Firmware Bundle-and-Protect Tool
 import argparse
 import struct
 
-
+#open a file with the keys
 def protect_firmware(infile, outfile, version, message):
     #need to somehow pass the key in
     key1 = b'key'
