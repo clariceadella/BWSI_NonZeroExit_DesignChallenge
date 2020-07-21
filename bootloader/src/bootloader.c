@@ -1,6 +1,3 @@
-//keys
-#include "info.h"
-
 // Hardware Imports
 #include "inc/hw_memmap.h" // Peripheral Base Addresses
 #include "inc/lm3s6965.h" // Peripheral Bit Masks and Registers
@@ -32,6 +29,7 @@ long program_flash(uint32_t, unsigned char*, unsigned int);
 #define FLASH_PAGESIZE 1024
 #define FLASH_WRITESIZE 4
 
+
 // Protocol Constants
 #define OK    ((unsigned char)0x00)
 #define ERROR ((unsigned char)0x01)
@@ -53,15 +51,12 @@ uint8_t *fw_release_message_address;
 unsigned char data[FLASH_PAGESIZE];
 
 //decryption variables
-unsigned char key[16]=KEY;
-unsigned char iv[16]=IV;
-unsigned char tag[100]=TAG;
+unsigned char key[16];
+unsigned char iv[16];
+unsigned char tag[16];
 unsigned char plaintext[FLASH_PAGESIZE]
 
-size_t key_len, cipher_len, iv_len;
-key_len=16;
-cipher_len=FLASH_PAGESIZE;
-iv_len=16;
+size_t key_len, plain_len, iv_len;
 
 br_aes_ct_ctr_keys bc;
 br_gcm_context gc;
@@ -70,13 +65,6 @@ void InitializeAES()
 	br_aes_ct_ctr_init(&bc,key,key_len);
 	br_gcm_init(&gc,&bc.vtable,br_ghash_ctmul32);
 
-}
-int DecryptAesGCM(char *data)
-{
-	//decrypt first
-	br_gcm_reset(&gc, iv, iv_len);
-	br_gcm_run(&gc, 0, data, FLASH_PAGESIZE);
-	return br_gcm_check_tag(&gc, tag);		
 }
 int main(void) {
 
@@ -212,20 +200,13 @@ void load_firmware(void)
     // If we filed our page buffer, program it
     if (data_index == FLASH_PAGESIZE || frame_length == 0) {
 	//decrypt the data
-      if(DecryptAesGCM(data))
-      {
-         if (program_flash(page_addr, data, data_index)){
-             uart_write(UART1, ERROR); // Reject the firmware
-             SysCtlReset(); // Reset device
-             return;
-          } 
-      }else{
-          return;
-      }
-          
-
+       
       // Try to write flash and check for error
-      
+      if (program_flash(page_addr, data, data_index)){
+        uart_write(UART1, ERROR); // Reject the firmware
+        SysCtlReset(); // Reset device
+        return;
+      }
 #if 1
       // Write debugging messages to UART2.
       uart_write_str(UART2, "Page successfully programmed\nAddress: ");
