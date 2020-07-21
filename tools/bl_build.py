@@ -39,6 +39,18 @@ def make_bootloader():
 
     subprocess.call('make clean', shell=True)
     status = subprocess.call('make')
+    
+    # Generates the keys
+    
+    key_aes = secrets.token_bytes(16)
+    iv = secrets.token_bytes(16)
+    
+    with open('secret_build_output.txt', 'wb') as fp:
+        fp.write(key_aes + iv)
+        
+    #with open('../bootloader/src/secrets.h', 'wb') as f:
+        #f.write("#define KEY_AES " + key_aes)
+        
 
     # Return True if make returned 0, otherwise return False.
     return (status == 0)
