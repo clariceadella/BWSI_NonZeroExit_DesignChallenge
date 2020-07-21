@@ -1,5 +1,5 @@
 //keys
-#include "secrets.h"
+#include "info.h"
 
 // Hardware Imports
 #include "inc/hw_memmap.h" // Peripheral Base Addresses
@@ -53,21 +53,20 @@ uint8_t *fw_release_message_address;
 unsigned char data[FLASH_PAGESIZE];
 
 //decryption variables
-unsigned char key[16];
-unsigned char iv[16];
-unsigned char tag[100];
-unsigned char plaintext[FLASH_PAGESIZE]
+unsigned char key[16]=KEY;
+unsigned char iv[16]=IV;
+unsigned char tag[100]=TAG;
 
-size_t key_len, cipher_len, iv_len;
-key_len=16;
-cipher_len=FLASH_PAGESIZE;
-iv_len=16;
+size_t key_len=16, cipher_len=FLASH_PAGESIZE, iv_len=16;
+
 
 br_aes_ct_ctr_keys bc;
 br_gcm_context gc;
 void InitializeAES()
 {
+    //initialize a counter
 	br_aes_ct_ctr_init(&bc,key,key_len);
+    //initialize the gcm context
 	br_gcm_init(&gc,&bc.vtable,br_ghash_ctmul32);
 
 }
@@ -76,6 +75,7 @@ int DecryptAesGCM(char *data)
 	//decrypt first
 	br_gcm_reset(&gc, iv, iv_len);
 	br_gcm_run(&gc, 0, data, FLASH_PAGESIZE);
+    //return thhe tag comparison
 	return br_gcm_check_tag(&gc, tag);		
 }
 int main(void) {
@@ -90,11 +90,11 @@ int main(void) {
 
   InitializeAES();
 
-  // Enable UART0 interrupt
+ // Enable UART0 interrupt
   IntEnable(INT_UART0);
   IntMasterEnable();
 
-  load_initial_firmware();
+ load_initial_firmware();
 
   uart_write_str(UART2, "Welcome to the BWSI Vehicle Update Service!\n");
   uart_write_str(UART2, "Send \"U\" to update, and \"B\" to run the firmware.\n");
@@ -218,8 +218,9 @@ void load_firmware(void)
              uart_write(UART1, ERROR); // Reject the firmware
              SysCtlReset(); // Reset device
              return;
-          } 
-      }else{
+         } 
+      }
+      else{
           return;
       }
           
@@ -238,7 +239,7 @@ void load_firmware(void)
       // Update to next page
       page_addr += FLASH_PAGESIZE;
       data_index = 0;
-
+      
       // If at end of firmware, go to main
       if (frame_length == 0) {
         uart_write(UART1, OK);
