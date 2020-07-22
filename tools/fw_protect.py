@@ -22,15 +22,12 @@ def protect_firmware(infile, outfile, version, message):
     #Pack version and size into two little-endian shorts
     metadata = struct.pack('<HH', version, len(firmware))
     
-    #updating with the metadata-- um don't want to do this
-    #cipher_encrypt.update(metadata)
-    
     # Append null-terminated message to end of firmware
     firmware_and_message = firmware + message.encode() + b'\00'
 
     #dealing with the the main data
-    ciphertext = cipher_encrypt.encrypt_and_digest(metadata)
-    ciphertext += cipher_encrypt.encrypt_and_digest(firmware_and_message)
+    cipher_encrypt.update(metadata)
+    ciphertext, tag = cipher_encrypt.encrypt_and_digest(firmware_and_message)
     
     # Write the encrypted message to outfile
     with open(outfile, 'wb+') as outfile:
