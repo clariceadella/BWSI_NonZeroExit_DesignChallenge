@@ -217,9 +217,7 @@ void load_firmware(void)
     // If we filed our page buffer, program it
     if (data_index == FLASH_PAGESIZE || frame_length == 0) {
 	//decrypt the data
-<<<<<<< HEAD
-       
-=======
+
       if(DecryptAesGCM(data))
       {
          if (program_flash(page_addr, data, data_index)){
@@ -233,7 +231,6 @@ void load_firmware(void)
       }
           
 
->>>>>>> 211cfae6ec7ba73cef0710757aea9e0975db1a81
       // Try to write flash and check for error
       if (program_flash(page_addr, data, data_index)){
         uart_write(UART1, ERROR); // Reject the firmware
