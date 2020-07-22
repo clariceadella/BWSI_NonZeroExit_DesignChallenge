@@ -4,6 +4,7 @@ Firmware Bundle-and-Protect Tool
 """
 import argparse
 import struct
+from Crypto.Util.Padding import pad, unpad
 
 #open a file with the keys
 def protect_firmware(infile, outfile, version, message):
@@ -20,7 +21,9 @@ def protect_firmware(infile, outfile, version, message):
         firmware = fp.read()
     
     #Pack version and size into two little-endian shorts
+    #add padding!
     metadata = struct.pack('<HH', version, len(firmware))
+    metadata = pad(metadata, 16)
     
     # Append null-terminated message to end of firmware
     firmware_and_message = firmware + message.encode() + b'\00'
