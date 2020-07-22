@@ -10,6 +10,7 @@ import os
 import pathlib
 import shutil
 import subprocess
+import Crypto.Random
 
 FILE_DIR = pathlib.Path(__file__).parent.absolute()
 
@@ -36,25 +37,24 @@ def make_bootloader():
     # Change into directory containing bootloader.
     bootloader = FILE_DIR / '..' / 'bootloader'
     os.chdir(bootloader)
-
-    subprocess.call('make clean', shell=True)
-    status = subprocess.call('make')
     
     # Generates the keys
     
-    key_aes = secrets.token_bytes(16)
-    iv = secrets.token_bytes(16)
+    key_aes = Crypto.Random.get_random_bytes(16)
+    iv = Crypto.Random.get_random_bytes(16)
     
     with open('secret_build_output.txt', 'wb') as fp:
         fp.write(key_aes + iv)
         
-    #with open('../bootloader/src/secrets.h', 'wb') as f:
-        #f.write("#define KEY_AES " + key_aes)
+    subprocess.call('make clean', shell=True)
+    status = subprocess.call('make KEY=key_aes IV=iv', shell=True)
         
 
     # Return True if make returned 0, otherwise return False.
     return (status == 0)
 
+def to_c_array(binary_string):
+	return "{" + ",".join([hex(c) for c in binary_string]) + "}"
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Bootloader Build Tool')
