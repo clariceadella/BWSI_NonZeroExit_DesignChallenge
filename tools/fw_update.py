@@ -45,14 +45,18 @@ def send_frame(ser, frame, debug=False):
 
 
 def main(ser, infile, debug):
+        
     # Open serial port. Set baudrate to 115200. Set timeout to 2 seconds.
     with open(infile, 'rb') as fp:
-        firmware_blob = fp.read()
+        firmware = fp.read()
 
-    metadata = firmware_blob[:4]
-    firmware = firmware_blob[4:]
-
-    send_metadata(ser, metadata, debug=debug)
+    #metadata = firmware_blob[:4]
+    #firmware = firmware_blob[4:]
+    
+    #tag = firmware_blob[:16]
+    #firmware = firmware_blob[16:]
+    
+    #ser.write(tag)
 
     for idx, frame_start in enumerate(range(0, len(firmware), FRAME_SIZE)):
         data = firmware[frame_start: frame_start + FRAME_SIZE]

@@ -35,6 +35,7 @@ def protect_firmware(infile, outfile, version, message):
     
     # Write the encrypted message to outfile
     with open(outfile, 'wb+') as outfile:
+        outfile.write(tag)
         outfile.write(ciphertext)
     
     #not needed but helpful
