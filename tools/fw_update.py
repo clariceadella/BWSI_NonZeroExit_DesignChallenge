@@ -1,4 +1,11 @@
 #!/usr/bin/env python
+
+#    Tag        (Metadata   Padding)   (Length    Firmware) 
+# ==========================================================
+# |  16 Bytes  |( 4 Bytes |12 Bytes)| ( 2 bytes | 16 Bytes) | cont......
+# ==========================================================
+# 
+
 """
 Firmware Updater Tool
 
@@ -10,6 +17,7 @@ A frame consists of two sections:
 --------------------
 | Length | Data... |
 --------------------
+     FIRMWARE
 
 In our case, the data is from one line of the Intel Hex formated .hex file
 
@@ -37,7 +45,7 @@ def send_frame(ser, frame, debug=False):
 
     time.sleep(0.1)
 
-    if resp != RESP_OK:
+    if resp != RESP_OK: #if there is no OK --> ERROR
         raise RuntimeError("ERROR: Bootloader responded with {}".format(repr(resp)))
 
     if debug:
@@ -50,28 +58,20 @@ def main(ser, infile, debug):
     with open(infile, 'rb') as fp:
         firmware = fp.read()
 
-    #metadata = firmware_blob[:4]
-    #firmware = firmware_blob[4:]
-    
-    #tag = firmware_blob[:16]
-    #firmware = firmware_blob[16:]
-    
-    #ser.write(tag)
-
     for idx, frame_start in enumerate(range(0, len(firmware), FRAME_SIZE)):
-        data = firmware[frame_start: frame_start + FRAME_SIZE]
+        data = firmware[frame_start: frame_start + FRAME_SIZE] #16 byte frames of data
 
         # Get length of data.
         length = len(data)
         frame_fmt = '>H{}s'.format(length)
 
         # Construct frame.
-        frame = struct.pack(frame_fmt, length, data)
+        frame = struct.pack(frame_fmt, length, data) 
 
         if debug:
             print("Writing frame {} ({} bytes)...".format(idx, len(frame)))
 
-        send_frame(ser, frame, debug=debug)
+        send_frame(ser, frame, debug=debug) #frames include: 2 bytes (length) and 16 bytes (data)
 
     print("Done writing firmware.")
 
