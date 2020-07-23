@@ -1,5 +1,4 @@
-//keys
-#include "info.h"
+
 
 // Hardware Imports
 #include "inc/hw_memmap.h" // Peripheral Base Addresses
@@ -69,14 +68,16 @@ void InitializeAES()
 	br_aes_ct_ctr_init(&bc,key,key_len);
     //initialize the gcm context
 	br_gcm_init(&gc,&bc.vtable,br_ghash_ctmul32);
+    //resetting the counter
+    br_gcm_reset(&gc, iv, iv_len);
+
 
 }
 int DecryptAesGCM(char *data, int length)
 {
 	//decrypt first
-	br_gcm_reset(&gc, iv, iv_len);
 	br_gcm_run(&gc, 0, data, length);
-    return br_gcm_check_tag(&gc, tag)
+    return br_gcm_check_tag(&gc, tag);
 }
 int main(void) {
 
@@ -149,12 +150,34 @@ void load_firmware(void)
   uint32_t version = 0;
   uint32_t size = 0;
   char *buffer[16];
+    
+  rcv = uart_read(UART1, BLOCKING, &read);
+  frame_length = (int)rcv << 8;
+  rcv = uart_read(UART1, BLOCKING, &read);
+  frame_length += (int)rcv;
+  
+  for(int i=0;i<16;i++)
+  {
+      rcv = uart_read(UART1, BLOCKING, &read);
+      tag[i]=rcv;
+  }
+  DecryptAesGCM(tag,16);
+    
+  rcv = uart_read(UART1, BLOCKING, &read);
+  frame_length = (int)rcv << 8;
+  rcv = uart_read(UART1, BLOCKING, &read);
+  frame_length += (int)rcv;
+    
   for(int i=0;i<16;i++)
   {
       rcv = uart_read(UART1, BLOCKING, &read);
       buffer[i]=rcv;
   }
   DecryptAesGCM(buffer,16);
+    
+  memcpy(data,buffer,16);
+  data_index += 16;
+    
   // Get version.
   rcv = buffer[0]
   version = (uint32_t)rcv;
@@ -234,13 +257,12 @@ void load_firmware(void)
   {
       for(int i=0;i<data_index;i++)
       {
-          if(i==FLASH_PAGESIZE*page_addr)
+          if(i==FLASH_PAGESIZE*page_addr+16)
           {
-             program_flash(page_addr*FLASH_PAGESIZE+FW_BASE, data+FLASH_PAGESIZE*page_addr, FLASH_PAGESIZE)
+             program_flash(page_addr*FLASH_PAGESIZE+FW_BASE, data+FLASH_PAGESIZE*page_addr+16, FLASH_PAGESIZE)
              page_addr++;
-          } 
-          if(i==data_index-1)
-             program_flash(page_addr*FLASH_PAGESIZE+FW_BASE, data+FLASH_PAGESIZE*page_addr, data_index-page_addr*FLASH_PAGESIZE)
+          } else if(i==data_index-1)
+             program_flash(page_addr*FLASH_PAGESIZE+FW_BASE, data+FLASH_PAGESIZE*page_addr+16, data_index-page_addr*FLASH_PAGESIZE)
 
       }
       
