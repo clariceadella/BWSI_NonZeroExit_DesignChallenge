@@ -1,3 +1,6 @@
+//keys
+#include "info.h"
+
 // Hardware Imports
 #include "inc/hw_memmap.h" // Peripheral Base Addresses
 #include "inc/lm3s6965.h" // Peripheral Bit Masks and Registers
@@ -12,6 +15,7 @@
 // Application Imports
 #include "uart.h"
 #include "bearssl.h"
+#include "string.h"
 
 // Forward Declarations
 void load_initial_firmware(void);
@@ -28,7 +32,6 @@ long program_flash(uint32_t, unsigned char*, unsigned int);
 // FLASH Constants
 #define FLASH_PAGESIZE 1024
 #define FLASH_WRITESIZE 4
-
 
 // Protocol Constants
 #define OK    ((unsigned char)0x00)
@@ -48,20 +51,15 @@ uint16_t *fw_size_address = (uint16_t *) (METADATA_BASE + 2);
 uint8_t *fw_release_message_address;
 
 // Firmware Buffer
-unsigned char data[FLASH_PAGESIZE];
+unsigned char data[30*FLASH_PAGESIZE]={'\0'};
 
 //decryption variables
-unsigned char key[16];
-unsigned char iv[16];
-unsigned char tag[16];
-unsigned char plaintext[FLASH_PAGESIZE]
-
-size_t key_len, plain_len, iv_len;
 unsigned char key[16]=KEY;
 unsigned char iv[16]=IV;
 unsigned char tag[100]=TAG;
 
 size_t key_len=16, cipher_len=FLASH_PAGESIZE, iv_len=16;
+
 
 br_aes_ct_ctr_keys bc;
 br_gcm_context gc;
@@ -73,16 +71,13 @@ void InitializeAES()
 	br_gcm_init(&gc,&bc.vtable,br_ghash_ctmul32);
 
 }
-
-int DecryptAesGCM(char *data)
+int DecryptAesGCM(char *data, int length)
 {
 	//decrypt first
 	br_gcm_reset(&gc, iv, iv_len);
-	br_gcm_run(&gc, 0, data, FLASH_PAGESIZE);
-    //return thhe tag comparison
-	return br_gcm_check_tag(&gc, tag);		
+	br_gcm_run(&gc, 0, data, length);
+    return br_gcm_check_tag(&gc, tag)
 }
-
 int main(void) {
 
   // Initialize UART channels
@@ -94,7 +89,7 @@ int main(void) {
   uart_init(UART2);
 
   InitializeAES();
-
+  
  // Enable UART0 interrupt
   IntEnable(INT_UART0);
   IntMasterEnable();
@@ -149,24 +144,31 @@ void load_firmware(void)
   uint32_t rcv = 0;
   
   uint32_t data_index = 0;
-  uint32_t page_addr = FW_BASE;
+  uint32_t firmware_index=0;
+  uint32_t page_addr = 0;
   uint32_t version = 0;
   uint32_t size = 0;
-
+  char *buffer[16];
+  for(int i=0;i<16;i++)
+  {
+      rcv = uart_read(UART1, BLOCKING, &read);
+      buffer[i]=rcv;
+  }
+  DecryptAesGCM(buffer,16);
   // Get version.
-  rcv = uart_read(UART1, BLOCKING, &read);
+  rcv = buffer[0]
   version = (uint32_t)rcv;
-  rcv = uart_read(UART1, BLOCKING, &read);
+  rcv = buffer[1]
   version |= (uint32_t)rcv << 8;
-
+  
   uart_write_str(UART2, "Received Firmware Version: ");
   uart_write_hex(UART2, version);
   nl(UART2);
-
+  
   // Get size.
-  rcv = uart_read(UART1, BLOCKING, &read);
+  rcv = buffer[2]
   size = (uint32_t)rcv;
-  rcv = uart_read(UART1, BLOCKING, &read);
+  rcv = buffer[3]
   size |= (uint32_t)rcv << 8;
   
 
@@ -197,68 +199,67 @@ void load_firmware(void)
 
   /* Loop here until you can get all your characters and stuff */
   while (1) {
-
-    // Get two bytes for the length.
+    uint32_t frame_length=0;
+      
+    //Get two bytes for the length.
     rcv = uart_read(UART1, BLOCKING, &read);
     frame_length = (int)rcv << 8;
     rcv = uart_read(UART1, BLOCKING, &read);
     frame_length += (int)rcv;
+      
+    if (frame_length == 0) {
+
+        uart_write(UART1, OK);
+        break;
+    
+    } // if
+      
+    for(int i=0;i<frame_length;i++)
+    {
+      rcv = uart_read(UART1, BLOCKING, &read);
+      data[data_index]=rcv;
+      data_index ++;
+    }     
+
 
     // Write length debug message
     uart_write_hex(UART2,(unsigned char)rcv);
     nl(UART2);
-
-    // Get the number of bytes specified
-    for (int i = 0; i < frame_length; ++i){
-        data[data_index] = uart_read(UART1, BLOCKING, &read);
-        data_index += 1;
-    } //for
-
-    // If we filed our page buffer, program it
-    if (data_index == FLASH_PAGESIZE || frame_length == 0) {
-	//decrypt the data
-
-      if(DecryptAesGCM(data))
-      {
-         if (program_flash(page_addr, data, data_index)){
-             uart_write(UART1, ERROR); // Reject the firmware
-             SysCtlReset(); // Reset device
-             return;
-         } 
-      }
-      else{
-          return;
-      }
-          
-
-      // Try to write flash and check for error
-      if (program_flash(page_addr, data, data_index)){
-        uart_write(UART1, ERROR); // Reject the firmware
-        SysCtlReset(); // Reset device
-        return;
-      }
-#if 1
-      // Write debugging messages to UART2.
-      uart_write_str(UART2, "Page successfully programmed\nAddress: ");
-      uart_write_hex(UART2, page_addr);
-      uart_write_str(UART2, "\nBytes: ");
-      uart_write_hex(UART2, data_index);
-      nl(UART2);
-#endif
-
-      // Update to next page
-      page_addr += FLASH_PAGESIZE;
-      data_index = 0;
       
-      // If at end of firmware, go to main
-      if (frame_length == 0) {
-        uart_write(UART1, OK);
-        break;
-      }
-    } // if
+    
 
     uart_write(UART1, OK); // Acknowledge the frame.
   } // while(1)
+  if(DecryptAesGCM(data,strlen(data)))
+  {
+      for(int i=0;i<data_index;i++)
+      {
+          if(i=FLASH_PAGESIZE*page_addr;i++)
+          {
+             program_flash(page_addr*FLASH_PAGESIZE+FW_BASE, data+FLASH_PAGESIZE*page_addr, FLASH_PAGESIZE)
+             page_addr++;
+          } 
+          if(i=data_index-1)
+             program_flash(page_addr*FLASH_PAGESIZE+FW_BASE, data+FLASH_PAGESIZE*page_addr, data_index-page_addr*FLASH_PAGESIZE)
+
+      }
+      
+  }else{
+      return;
+  }
+  //int indexer=0;
+//   while(firmwareBuffer[i])
+//   {
+      
+//       if (program_flash(page_addr*FLASH_PAGESIZE+FW_BASE, data, data_index)){
+//              uart_write(UART1, ERROR); // Reject the firmware
+//              SysCtlReset(); // Reset device
+//              return;
+//       } 
+
+//       indexer ++;
+//   }
+  
 }
 
 
