@@ -28,8 +28,9 @@ def protect_firmware(infile, outfile, version, message):
     # Append null-terminated message to end of firmware
     firmware_and_message = firmware + message.encode() + b'\00'
 
-    #dealing with the the main data
+    #appending the metadata and firmware together, tagging it 
     cipher_encrypt.update(metadata)
+    cipher_encrypt.update(firmware_and_message)
     ciphertext, tag = cipher_encrypt.encrypt_and_digest(firmware_and_message)
     
     # Write the encrypted message to outfile

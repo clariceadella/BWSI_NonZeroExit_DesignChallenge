@@ -27,30 +27,6 @@ from serial import Serial
 RESP_OK = b'\x00'
 FRAME_SIZE = 16
 
-
-def send_metadata(ser, metadata, debug=False):
-    version, size = struct.unpack_from('<HH', metadata)
-    print(f'Version: {version}\nSize: {size} bytes\n')
-
-    # Handshake for update
-    ser.write(b'U')
-    
-    print('Waiting for bootloader to enter update mode...')
-    while ser.read(1).decode() != 'U':
-        pass
-
-    # Send size and version to bootloader.
-    if debug:
-        print(metadata)
-
-    ser.write(metadata)
-
-    # Wait for an OK from the bootloader.
-    resp = ser.read()
-    if resp != RESP_OK:
-        raise RuntimeError("ERROR: Bootloader responded with {}".format(repr(resp)))
-
-
 def send_frame(ser, frame, debug=False):
     ser.write(frame)  # Write the frame...
 
