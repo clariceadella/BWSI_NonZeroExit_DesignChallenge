@@ -234,12 +234,12 @@ void load_firmware(void)
   {
       for(int i=0;i<data_index;i++)
       {
-          if(i=FLASH_PAGESIZE*page_addr;i++)
+          if(i==FLASH_PAGESIZE*page_addr)
           {
              program_flash(page_addr*FLASH_PAGESIZE+FW_BASE, data+FLASH_PAGESIZE*page_addr, FLASH_PAGESIZE)
              page_addr++;
           } 
-          if(i=data_index-1)
+          if(i==data_index-1)
              program_flash(page_addr*FLASH_PAGESIZE+FW_BASE, data+FLASH_PAGESIZE*page_addr, data_index-page_addr*FLASH_PAGESIZE)
 
       }
