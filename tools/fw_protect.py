@@ -6,42 +6,41 @@ import argparse
 import struct
 from Crypto.Util.Padding import pad, unpad
 
-#open a file with the keys
 def protect_firmware(infile, outfile, version, message):
-    #read the file with the key-- fix later
+    
+    #Read the file with the key and iv
     with open("secretbuildoutput.txt", 'rb') as k:
         key1 = k.read(16)
         iv = k.read(16)
     
-    #Will encrypt with AES GCM mode
+    #Encrypt with AES GCM mode
     cipher_encrypt = AES.new(key1, AES.MODE_GCM, IV=iv)
     
-    # Load firmware binary from infile
+    #Load firmware binary from infile
     with open(infile, 'rb') as fp:
         firmware = fp.read()
     
-    #Pack version and size into two little-endian shorts
-    #add padding!
+    #Pack version and size into two little-endian shorts, pad the metadata
     metadata = struct.pack('<HH', version, len(firmware))
     metadata = pad(metadata, 16)
     
-    # Append null-terminated message to end of firmware
+    #Append null-terminated message to end of firmware
     firmware_and_message = firmware + message.encode() + b'\00'
 
-    #appending the metadata and firmware together, tagging it 
+    #Append the metadata and firmware together, add a tag 
     cipher_encrypt.update(metadata)
     cipher_encrypt.update(firmware_and_message)
     ciphertext, tag = cipher_encrypt.encrypt_and_digest(firmware_and_message)
     
-    # Write the encrypted message to outfile
+    #Write the encrypted data to outfile, tag and ciphertext will be in the same file
     with open(outfile, 'wb+') as outfile:
         outfile.write(tag)
         outfile.write(ciphertext)
     
-    #not needed but helpful
+    #Not needed but helpful, prints the values of everything
     print("Send this info: ")
     print("Nonce: ".encode("utf-8") + IV)
-    print("Metadata:".encode("utf-8") + meta)
+    print("Metadata:".encode("utf-8") + metadata)
     print("Ciphertext: ".encode("utf-8") + ciphertext)
     print("Tag: ".encode("utf-8") + tag)
 
