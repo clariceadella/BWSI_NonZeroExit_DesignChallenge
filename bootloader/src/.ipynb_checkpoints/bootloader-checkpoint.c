@@ -101,9 +101,9 @@ int DecryptAesGCM(unsigned char *data, int length, int check_tag)
     //returning the tag check
     if(check_tag)
     {
-        char arr[16];
-        br_gcm_get_tag(&gc,arr);
-        PrintArr(arr,16);
+        //char arr[16];
+        //br_gcm_get_tag(&gc,arr);
+        //PrintArr(arr,16);
         return br_gcm_check_tag(&gc, tag);
 
     }
@@ -230,12 +230,13 @@ void load_firmware(void)
     
   //ackowledge the metadata
   uart_write(UART1, OK);
+  memcpy(data,buffer,16);
+
   DecryptAesGCM(buffer,16,0);
     
 //resetting the counter for double decryption
   br_gcm_reset(&gc, iv, iv_len);
   
-  memcpy(data,buffer,16);
   data_index += 16;
     
   // Get version.
@@ -326,16 +327,19 @@ void load_firmware(void)
   if(DecryptAesGCM(data,data_index,1))
   {
       uart_write_str(UART2, "data authentication verified");
-      for(int i=0;i<data_index;i++)
+      unsigned char *flasher = data + 16;
+      for(int i=0;i<data_index-16;i++)
       {
-          if(i==FLASH_PAGESIZE*page_addr+16)
+          if(i==FLASH_PAGESIZE*page_addr)
           {
-             program_flash(page_addr*FLASH_PAGESIZE+FW_BASE, data+FLASH_PAGESIZE*page_addr+16, FLASH_PAGESIZE);
+             program_flash(page_addr*FLASH_PAGESIZE+FW_BASE, flasher+FLASH_PAGESIZE*page_addr, FLASH_PAGESIZE);
              page_addr++;
           } else if(i==data_index-1)
-             program_flash(page_addr*FLASH_PAGESIZE+FW_BASE, data+FLASH_PAGESIZE*page_addr+16, data_index-page_addr*FLASH_PAGESIZE);
+             program_flash(page_addr*FLASH_PAGESIZE+FW_BASE, flasher+FLASH_PAGESIZE*page_addr, data_index-page_addr*FLASH_PAGESIZE);
 
       }
+      nl(UART2);
+      uart_write_str(UART2,"all pages programmed");
       
   }else{
       uart_write_str(UART2, (char *)data);
