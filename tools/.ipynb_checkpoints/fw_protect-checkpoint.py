@@ -4,12 +4,16 @@ Firmware Bundle-and-Protect Tool
 """
 import argparse
 import struct
+import pathlib
+from Crypto.Cipher import AES
 from Crypto.Util.Padding import pad, unpad
+FILE_DIR = pathlib.Path(__file__).parent.absolute()
+bootloader = FILE_DIR / '..' / 'bootloader'
 
 def protect_firmware(infile, outfile, version, message):
     
     #Read the file with the key and iv
-    with open("secretbuildoutput.txt", 'rb') as k:
+    with open(bootloader/"secret_build_output.txt", 'rb') as k:
         key1 = k.read(16)
         iv = k.read(16)
     
@@ -21,11 +25,12 @@ def protect_firmware(infile, outfile, version, message):
         firmware = fp.read()
     
     #Pack version and size into two little-endian shorts, pad the metadata
-    metadata = struct.pack('<HH', version, len(firmware))
+    metadata = struct.pack('>HH', version, len(firmware))
+    print("the size is"+str(len(firmware)))
     metadata = pad(metadata, 16)
     
     #Append metadata and null-terminated message to end of firmware
-    firmware_and_message = metadata + firmware + message.encode() + b'\00'
+    firmware_and_message = metadata + firmware + message.encode()
 
     #Append the metadata and firmware together, add a tag 
 #     cipher_encrypt.update(metadata)
@@ -39,7 +44,7 @@ def protect_firmware(infile, outfile, version, message):
     
     #Not needed but helpful, prints the values of everything
     print("Send this info: ")
-    print("Nonce: ".encode("utf-8") + IV)
+    print("Nonce: ".encode("utf-8") + iv)
     print("Metadata:".encode("utf-8") + metadata)
     print("Ciphertext: ".encode("utf-8") + ciphertext)
     print("Tag: ".encode("utf-8") + tag)

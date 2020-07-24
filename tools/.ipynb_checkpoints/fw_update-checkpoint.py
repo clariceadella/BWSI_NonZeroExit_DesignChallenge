@@ -53,7 +53,11 @@ def send_frame(ser, frame, debug=False):
 
 
 def main(ser, infile, debug):
-        
+    ser.write(b'U')  
+    print('Waiting for bootloader to enter update mode...')
+    if ser.read(1).decode() != 'U':
+        return
+    print("sending data")
     # Open serial port. Set baudrate to 115200. Set timeout to 2 seconds.
     with open(infile, 'rb') as fp:
         firmware = fp.read()

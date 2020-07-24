@@ -63,7 +63,8 @@ BEARSSL=${LIB}/BearSSL
 include ./makedefs
 
 CFLAGS+=-g
-
+CFLAGS+=-D KEY=${KEY}
+CFLAGS+=-D IV=${IV}
 #
 # Where to find header files that do not live in this directory.
 #
