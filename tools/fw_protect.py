@@ -46,7 +46,8 @@ def protect_firmware(infile, outfile, version, message):
     print("Send this info: ")
     print("Nonce: ".encode("utf-8") + iv)
     print("Metadata:".encode("utf-8") + metadata)
-    print("Ciphertext: ".encode("utf-8") + ciphertext)
+    #print("Ciphertext: ".encode("utf-8") + ciphertext)
+    #print("Plaintext: ".encode('utf-8') + firmware_and_message)
     print("Tag: ".encode("utf-8") + tag)
 
 if __name__ == '__main__':
