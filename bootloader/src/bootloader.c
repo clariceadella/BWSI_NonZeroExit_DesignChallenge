@@ -62,6 +62,28 @@ size_t key_len=16, cipher_len=FLASH_PAGESIZE, iv_len=16;
 
 br_aes_ct_ctr_keys bc;
 br_gcm_context gc;
+void PrintArr(char *arr, int length)
+{
+    for(int i=0;i<length;i++)
+    {
+        char byte=arr[i];
+        byte=byte >> 4;
+        if(byte<10)
+            byte += 0x30;
+        else
+            byte += 0x37;
+        uart_write(UART2, byte);
+        
+        byte=arr[i];
+        byte=byte & 0xF;
+        if(byte<10)
+            byte += 0x30;
+        else
+            byte += 0x37;
+        uart_write(UART2, byte);
+    }
+}
+
 void InitializeAES()
 {
     //initialize a counter
@@ -78,9 +100,23 @@ int DecryptAesGCM(unsigned char *data, int length, int check_tag)
 	br_gcm_run(&gc, 0, data, length);
     //returning the tag check
     if(check_tag)
+    {
+        //char arr[16];
+        //br_gcm_get_tag(&gc,arr);
+        //PrintArr(arr,16);
         return br_gcm_check_tag(&gc, tag);
+
+    }
     else
         return 0;
+}
+void EncryptAesGCM(unsigned char *data, int length)
+{
+	//decrypt first
+	br_gcm_run(&gc, 1, data, length);
+    //returning the tag check
+    br_gcm_get_tag(&gc, tag);
+    uart_write_str(UART2, (char *)tag);
 }
 int main(void) {
 
@@ -168,9 +204,19 @@ void load_firmware(void)
     
   //debug the tag
   uart_write_str(UART2,"Bootloader received tag: ");
-  uart_write_str(UART2, (char *)tag);
+  PrintArr(tag,16);
+
+//   uart_write_str(UART2, (char *)tag);
   nl(UART2);
   
+  uart_write_str(UART2,"Bootloader received key: ");
+  uart_write_str(UART2, (char *)key);
+  nl(UART2); 
+    
+  uart_write_str(UART2,"Bootloader received iv: ");
+  uart_write_str(UART2, (char *)iv);
+  nl(UART2);
+    
   rcv = uart_read(UART1, BLOCKING, &read);
   frame_length = (int)rcv << 8;
   rcv = uart_read(UART1, BLOCKING, &read);
@@ -184,12 +230,13 @@ void load_firmware(void)
     
   //ackowledge the metadata
   uart_write(UART1, OK);
+  memcpy(data,buffer,16);
+
   DecryptAesGCM(buffer,16,0);
     
 //resetting the counter for double decryption
   br_gcm_reset(&gc, iv, iv_len);
   
-  memcpy(data,buffer,16);
   data_index += 16;
     
   // Get version.
@@ -280,18 +327,22 @@ void load_firmware(void)
   if(DecryptAesGCM(data,data_index,1))
   {
       uart_write_str(UART2, "data authentication verified");
-      for(int i=0;i<data_index;i++)
+      unsigned char *flasher = data + 16;
+      for(int i=0;i<data_index-16;i++)
       {
-          if(i==FLASH_PAGESIZE*page_addr+16)
+          if(i==FLASH_PAGESIZE*page_addr)
           {
-             program_flash(page_addr*FLASH_PAGESIZE+FW_BASE, data+FLASH_PAGESIZE*page_addr+16, FLASH_PAGESIZE);
+             program_flash(page_addr*FLASH_PAGESIZE+FW_BASE, flasher+FLASH_PAGESIZE*page_addr, FLASH_PAGESIZE);
              page_addr++;
           } else if(i==data_index-1)
-             program_flash(page_addr*FLASH_PAGESIZE+FW_BASE, data+FLASH_PAGESIZE*page_addr+16, data_index-page_addr*FLASH_PAGESIZE);
+             program_flash(page_addr*FLASH_PAGESIZE+FW_BASE, flasher+FLASH_PAGESIZE*page_addr, data_index-page_addr*FLASH_PAGESIZE);
 
       }
+      nl(UART2);
+      uart_write_str(UART2,"all pages programmed");
       
   }else{
+      uart_write_str(UART2, (char *)data);
       uart_write_str(UART2, "data authentication failed");
       return;
   }
