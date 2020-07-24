@@ -152,21 +152,20 @@ void load_firmware(void)
   unsigned char buffer[16];
     
   rcv = uart_read(UART1, BLOCKING, &read);
-  frame_length = (int)rcv << 8;
+  frame_length = (int)rcv;
   rcv = uart_read(UART1, BLOCKING, &read);
-  frame_length += (int)rcv;
+  frame_length |= ((int)rcv << 8);
   
   for(int i=0;i<16;i++)
   {
       rcv_8 = uart_read(UART1, BLOCKING, &read);
       tag[i]=rcv_8;
   }
-  DecryptAesGCM(tag,16);
     
   rcv = uart_read(UART1, BLOCKING, &read);
-  frame_length = (int)rcv << 8;
+  frame_length = (int)rcv;
   rcv = uart_read(UART1, BLOCKING, &read);
-  frame_length += (int)rcv;
+  frame_length |= ((int)rcv << 8);
     
   for(int i=0;i<16;i++)
   {
@@ -175,14 +174,14 @@ void load_firmware(void)
   }
   DecryptAesGCM(buffer,16);
     
-  memcpy(data,buffer,16);
+  memcpy(data,buffer,strlen(buffer));
   data_index += 16;
     
   // Get version.
   rcv = buffer[0];
-  version = (uint32_t)rcv;
+  version = (uint32_t)rcv << 8;
   rcv = buffer[1];
-  version |= (uint32_t)rcv << 8;
+  version |= (uint32_t)rcv;
   
   uart_write_str(UART2, "Received Firmware Version: ");
   uart_write_hex(UART2, version);
@@ -190,9 +189,9 @@ void load_firmware(void)
   
   // Get size.
   rcv = buffer[2];
-  size = (uint32_t)rcv;
+  size = (uint32_t)rcv << 8;
   rcv = buffer[3];
-  size |= (uint32_t)rcv << 8;
+  size |= (uint32_t)rcv;
   
 
   uart_write_str(UART2, "Received Firmware Size: ");
@@ -226,9 +225,11 @@ void load_firmware(void)
       
     //Get two bytes for the length.
     rcv = uart_read(UART1, BLOCKING, &read);
-    frame_length = (int)rcv << 8;
+    frame_length = (int)rcv;
     rcv = uart_read(UART1, BLOCKING, &read);
-    frame_length += (int)rcv;
+    frame_length |= ((int)rcv << 8);
+
+;
       
     if (frame_length == 0) {
 

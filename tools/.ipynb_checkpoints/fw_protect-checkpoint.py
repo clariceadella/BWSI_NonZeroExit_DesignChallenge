@@ -4,26 +4,45 @@ Firmware Bundle-and-Protect Tool
 """
 import argparse
 import struct
-
+from Crypto.Util.Padding import pad, unpad
 
 def protect_firmware(infile, outfile, version, message):
-    # Load firmware binary from infile
+    
+    #Read the file with the key and iv
+    with open("secretbuildoutput.txt", 'rb') as k:
+        key1 = k.read(16)
+        iv = k.read(16)
+    
+    #Encrypt with AES GCM mode
+    cipher_encrypt = AES.new(key1, AES.MODE_GCM, nonce=iv)
+    
+    #Load firmware binary from infile
     with open(infile, 'rb') as fp:
         firmware = fp.read()
-
-    # Append null-terminated message to end of firmware
-    firmware_and_message = firmware + message.encode() + b'\00'
-
-    # Pack version and size into two little-endian shorts
+    
+    #Pack version and size into two little-endian shorts, pad the metadata
     metadata = struct.pack('<HH', version, len(firmware))
+    metadata = pad(metadata, 16)
+    
+    #Append metadata and null-terminated message to end of firmware
+    firmware_and_message = metadata + firmware + message.encode() + b'\00'
 
-    # Append firmware and message to metadata
-    firmware_blob = metadata + firmware_and_message
-
-    # Write firmware blob to outfile
+    #Append the metadata and firmware together, add a tag 
+#     cipher_encrypt.update(metadata)
+#     cipher_encrypt.update(firmware_and_message)
+    ciphertext, tag = cipher_encrypt.encrypt_and_digest(firmware_and_message)
+    
+    #Write the encrypted data to outfile, tag and ciphertext will be in the same file
     with open(outfile, 'wb+') as outfile:
-        outfile.write(firmware_blob)
-
+        outfile.write(tag)
+        outfile.write(ciphertext)
+    
+    #Not needed but helpful, prints the values of everything
+    print("Send this info: ")
+    print("Nonce: ".encode("utf-8") + IV)
+    print("Metadata:".encode("utf-8") + metadata)
+    print("Ciphertext: ".encode("utf-8") + ciphertext)
+    print("Tag: ".encode("utf-8") + tag)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Firmware Update Tool')

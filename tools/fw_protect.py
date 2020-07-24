@@ -14,7 +14,7 @@ def protect_firmware(infile, outfile, version, message):
         iv = k.read(16)
     
     #Encrypt with AES GCM mode
-    cipher_encrypt = AES.new(key1, AES.MODE_GCM, IV=iv)
+    cipher_encrypt = AES.new(key1, AES.MODE_GCM, nonce=iv)
     
     #Load firmware binary from infile
     with open(infile, 'rb') as fp:
@@ -24,12 +24,12 @@ def protect_firmware(infile, outfile, version, message):
     metadata = struct.pack('<HH', version, len(firmware))
     metadata = pad(metadata, 16)
     
-    #Append null-terminated message to end of firmware
-    firmware_and_message = firmware + message.encode() + b'\00'
+    #Append metadata and null-terminated message to end of firmware
+    firmware_and_message = metadata + firmware + message.encode() + b'\00'
 
     #Append the metadata and firmware together, add a tag 
-    cipher_encrypt.update(metadata)
-    cipher_encrypt.update(firmware_and_message)
+#     cipher_encrypt.update(metadata)
+#     cipher_encrypt.update(firmware_and_message)
     ciphertext, tag = cipher_encrypt.encrypt_and_digest(firmware_and_message)
     
     #Write the encrypted data to outfile, tag and ciphertext will be in the same file
