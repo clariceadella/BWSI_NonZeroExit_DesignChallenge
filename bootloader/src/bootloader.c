@@ -152,9 +152,9 @@ void load_firmware(void)
   unsigned char buffer[16];
     
   rcv = uart_read(UART1, BLOCKING, &read);
-  frame_length = (int)rcv;
+  frame_length = (int)rcv << 8;
   rcv = uart_read(UART1, BLOCKING, &read);
-  frame_length |= ((int)rcv << 8);
+  frame_length |= (int)rcv;
   
   for(int i=0;i<16;i++)
   {
@@ -163,9 +163,9 @@ void load_firmware(void)
   }
     
   rcv = uart_read(UART1, BLOCKING, &read);
-  frame_length = (int)rcv;
+  frame_length = (int)rcv << 8;
   rcv = uart_read(UART1, BLOCKING, &read);
-  frame_length |= ((int)rcv << 8);
+  frame_length |= (int)rcv;
     
   for(int i=0;i<16;i++)
   {
@@ -225,9 +225,9 @@ void load_firmware(void)
       
     //Get two bytes for the length.
     rcv = uart_read(UART1, BLOCKING, &read);
-    frame_length = (int)rcv;
+    frame_length = (int)rcv << 8;
     rcv = uart_read(UART1, BLOCKING, &read);
-    frame_length |= ((int)rcv << 8);
+    frame_length |= (int)rcv;
 
 ;
       

@@ -1,9 +1,0 @@
-ROOT=$(realpath ../../../)
-LIB=${ROOT}/lib
-STELLARIS=${LIB}/stellaris
-include ../firmware/makedefs
-CFLAGS+=-g
-IPATH+=./include
-IPATH+=${STELLARIS}
-test: test.c
-    gcc test.c

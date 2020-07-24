@@ -60,11 +60,9 @@ BEARSSL=${LIB}/BearSSL
 # Include the common make definitions.
 #
 # include ${STELLARIS}/makedefs
-include ../firmware/makedefs
+include ./makedefs
 
 CFLAGS+=-g
-CFLAGS+=-D KEY=${KEY}
-CFLAGS+=-D IV=${IV}
 
 #
 # Where to find header files that do not live in this directory.
@@ -73,6 +71,12 @@ IPATH+=./include
 IPATH+=${STELLARIS}
 IPATH+=${UART}
 IPATH+=${BEARSSL}/inc
+
+#
+# Remove --gc-sections which prevents prevents bearssl from working
+#
+
+LDFLAGS=
 
 #
 # Where to find source files that do not live in this directory
@@ -107,6 +111,7 @@ ${COMPILER}/main.axf: ${COMPILER}/firmware.o
 ${COMPILER}/main.axf: ${COMPILER}/bootloader.o
 ${COMPILER}/main.axf: ${COMPILER}/startup_${COMPILER}.o
 ${COMPILER}/main.axf: ${STELLARIS}/driverlib/${COMPILER}-cm3/libdriver-cm3.a
+${COMPILER}/main.axf: ${BEARSSL}/build/stellaris/libbearssl.a
 ${COMPILER}/main.axf: ${STELLARIS}/main.ld
 SCATTERgcc_main=${STELLARIS}/main.ld
 ENTRY_main=ResetISR
