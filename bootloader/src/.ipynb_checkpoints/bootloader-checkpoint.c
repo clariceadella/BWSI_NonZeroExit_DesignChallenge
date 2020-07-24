@@ -55,7 +55,7 @@ unsigned char data[30*FLASH_PAGESIZE]={'\0'};
 //decryption variables
 unsigned char key[16]=KEY;
 unsigned char iv[16]=IV;
-unsigned char tag[100]=TAG;
+unsigned char tag[16];
 
 size_t key_len=16, cipher_len=FLASH_PAGESIZE, iv_len=16;
 
@@ -73,10 +73,11 @@ void InitializeAES()
 
 
 }
-int DecryptAesGCM(char *data, int length)
+int DecryptAesGCM(unsigned char *data, int length)
 {
 	//decrypt first
 	br_gcm_run(&gc, 0, data, length);
+    //returning the tag check
     return br_gcm_check_tag(&gc, tag);
 }
 int main(void) {
@@ -143,13 +144,12 @@ void load_firmware(void)
   int frame_length = 0;
   int read = 0;
   uint32_t rcv = 0;
-  
+  uint8_t rcv_8=0;
   uint32_t data_index = 0;
-  uint32_t firmware_index=0;
   uint32_t page_addr = 0;
   uint32_t version = 0;
   uint32_t size = 0;
-  char *buffer[16];
+  unsigned char buffer[16];
     
   rcv = uart_read(UART1, BLOCKING, &read);
   frame_length = (int)rcv << 8;
@@ -158,8 +158,8 @@ void load_firmware(void)
   
   for(int i=0;i<16;i++)
   {
-      rcv = uart_read(UART1, BLOCKING, &read);
-      tag[i]=rcv;
+      rcv_8 = uart_read(UART1, BLOCKING, &read);
+      tag[i]=rcv_8;
   }
   DecryptAesGCM(tag,16);
     
@@ -170,8 +170,8 @@ void load_firmware(void)
     
   for(int i=0;i<16;i++)
   {
-      rcv = uart_read(UART1, BLOCKING, &read);
-      buffer[i]=rcv;
+      rcv_8 = uart_read(UART1, BLOCKING, &read);
+      buffer[i]=rcv_8;
   }
   DecryptAesGCM(buffer,16);
     
@@ -179,9 +179,9 @@ void load_firmware(void)
   data_index += 16;
     
   // Get version.
-  rcv = buffer[0]
+  rcv = buffer[0];
   version = (uint32_t)rcv;
-  rcv = buffer[1]
+  rcv = buffer[1];
   version |= (uint32_t)rcv << 8;
   
   uart_write_str(UART2, "Received Firmware Version: ");
@@ -189,9 +189,9 @@ void load_firmware(void)
   nl(UART2);
   
   // Get size.
-  rcv = buffer[2]
+  rcv = buffer[2];
   size = (uint32_t)rcv;
-  rcv = buffer[3]
+  rcv = buffer[3];
   size |= (uint32_t)rcv << 8;
   
 
@@ -239,8 +239,8 @@ void load_firmware(void)
       
     for(int i=0;i<frame_length;i++)
     {
-      rcv = uart_read(UART1, BLOCKING, &read);
-      data[data_index]=rcv;
+      rcv_8 = uart_read(UART1, BLOCKING, &read);
+      data[data_index]=rcv_8;
       data_index ++;
     }     
 
@@ -253,34 +253,22 @@ void load_firmware(void)
 
     uart_write(UART1, OK); // Acknowledge the frame.
   } // while(1)
-  if(DecryptAesGCM(data,strlen(data)))
+  if(DecryptAesGCM(data,strlen((const char*)data)))
   {
       for(int i=0;i<data_index;i++)
       {
           if(i==FLASH_PAGESIZE*page_addr+16)
           {
-             program_flash(page_addr*FLASH_PAGESIZE+FW_BASE, data+FLASH_PAGESIZE*page_addr+16, FLASH_PAGESIZE)
+             program_flash(page_addr*FLASH_PAGESIZE+FW_BASE, data+FLASH_PAGESIZE*page_addr+16, FLASH_PAGESIZE);
              page_addr++;
           } else if(i==data_index-1)
-             program_flash(page_addr*FLASH_PAGESIZE+FW_BASE, data+FLASH_PAGESIZE*page_addr+16, data_index-page_addr*FLASH_PAGESIZE)
+             program_flash(page_addr*FLASH_PAGESIZE+FW_BASE, data+FLASH_PAGESIZE*page_addr+16, data_index-page_addr*FLASH_PAGESIZE);
 
       }
       
   }else{
       return;
   }
-  //int indexer=0;
-//   while(firmwareBuffer[i])
-//   {
-      
-//       if (program_flash(page_addr*FLASH_PAGESIZE+FW_BASE, data, data_index)){
-//              uart_write(UART1, ERROR); // Reject the firmware
-//              SysCtlReset(); // Reset device
-//              return;
-//       } 
-
-//       indexer ++;
-//   }
   
 }
 

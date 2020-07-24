@@ -45,7 +45,7 @@ PART=LM3S6965
 #
 # Base library directory
 #
-ROOT=$(realpath ../../../)
+ROOT=$(realpath ../../)
 LIB=${ROOT}/lib
 
 #
@@ -53,6 +53,7 @@ LIB=${ROOT}/lib
 #
 STELLARIS=${LIB}/stellaris
 UART=${LIB}/uart
+BEARSSL=${LIB}/BearSSL
 
 
 #
@@ -71,6 +72,7 @@ CFLAGS+=-D IV=${IV}
 IPATH+=./include
 IPATH+=${STELLARIS}
 IPATH+=${UART}
+IPATH+=${BEARSSL}/inc
 
 #
 # Where to find source files that do not live in this directory

@@ -14,6 +14,9 @@ import Crypto.Random
 
 FILE_DIR = pathlib.Path(__file__).parent.absolute()
 
+def to_c_array(binary_string):
+	return "{" + ",".join([hex(c) for c in binary_string]) + "}"
+
 
 def copy_initial_firmware(binary_path):
     """
@@ -47,14 +50,12 @@ def make_bootloader():
         fp.write(key_aes + iv)
         
     subprocess.call('make clean', shell=True)
-    status = subprocess.call('make KEY=key_aes IV=iv', shell=True)
+    status = subprocess.call(f'make KEY={to_c_array(key_aes)} IV={to_c_array(iv)}', shell=True)
         
 
     # Return True if make returned 0, otherwise return False.
     return (status == 0)
 
-def to_c_array(binary_string):
-	return "{" + ",".join([hex(c) for c in binary_string]) + "}"
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Bootloader Build Tool')
