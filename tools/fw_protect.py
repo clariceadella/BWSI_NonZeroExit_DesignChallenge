@@ -7,6 +7,7 @@ import struct
 import pathlib
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import pad, unpad
+
 FILE_DIR = pathlib.Path(__file__).parent.absolute()
 bootloader = FILE_DIR / '..' / 'bootloader'
 
