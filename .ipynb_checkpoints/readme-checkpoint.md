@@ -15,13 +15,12 @@ We designed a secure firmware distribution system using encryption protocols suc
 1. Navigate to the `design-challenge-non-zero-exit` folder
 2. Run the following
 `python3 tools/bl_build.py`
+
 `python3 tools/fw_protect.py --infile firmware/firmware/gcc/main.bin --outfile firmwareblob.blob --version 3 --message "test"`
+
 `python3 tools/bl_emulate.py`
+
 `python3 tools/fw_update.py --port /embsec/UART1 --firmware firmwareblob.blob`
-
-## Design Overview
-
-Our design first generates a 16-byte key and IV in the bootloader build tool. This key is sent to the bootloader and the secret_build_output.txt file. The key is used in encrypting the raw firmware data using AES in GCM mode. A tag is generated and the firmware is sent to the bootloader in 18-Byte frames. The bootloader reads the tags and decrypts the data using the tags and the key
 
 ###  bl_build.py
 
