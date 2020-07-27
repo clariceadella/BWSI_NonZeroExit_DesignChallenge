@@ -115,9 +115,7 @@ int DecryptAesGCM(unsigned char *data, int length, int check_tag)
     //returning the tag check
     if(check_tag)
     {
-        //char arr[16];
-        //br_gcm_get_tag(&gc,arr);
-        //PrintArr(arr,16);
+      
         return br_gcm_check_tag(&gc, tag);
 
     }
@@ -229,9 +227,6 @@ void load_firmware(void)
       rcv_8 = uart_read(UART1, BLOCKING, &read);
       hmac[i]=rcv_8;
   }
-//   PrintArr(hmac,32);
-//   uart_write_str(UART2, "the hmac received is:");
-//   uart_write_str(UART2, hmac);
  
   //ackowledge hmac part 2
   uart_write(UART1, OK);
@@ -249,21 +244,6 @@ void load_firmware(void)
       
   //ackowledge the tag
   uart_write(UART1, OK);
-    
-  //debug the tag
-  uart_write_str(UART2,"Bootloader received tag: ");
-  PrintArr(tag,16);
-
-//   uart_write_str(UART2, (char *)tag);
-  nl(UART2);
-  
-  uart_write_str(UART2,"Bootloader received key: ");
-  uart_write_str(UART2, (char *)key);
-  nl(UART2); 
-    
-  uart_write_str(UART2,"Bootloader received iv: ");
-  uart_write_str(UART2, (char *)iv);
-  nl(UART2);
     
   rcv = uart_read(UART1, BLOCKING, &read);
   frame_length = (int)rcv << 8;
@@ -306,25 +286,19 @@ void load_firmware(void)
     for(int i=0;i<frame_length;i++)
     {
       rcv_8 = uart_read(UART1, BLOCKING, &read);
-//       uart_write_str(UART2, "Bootloader received: ");
-//       uart_write_hex(UART2,(unsigned char)rcv_8);
-//       nl(UART2);
+
       data[data_index]=rcv_8;
       data_index ++;
     }     
 
     uart_write(UART1, OK); // Acknowledge the frame.
   } // while(1)
-
-  //calculate HMAC
-  memcpy(datawithtag, tag, 16);
-  unsigned char *data_firmware=datawithtag+16;
-  memcpy(data_firmware, data, data_index);
-  HMACFunction(hmackey, 32, datawithtag, data_index + 16, calchmac);
+    
+  HMACFunction(hmackey, 32, tag, 16, calchmac);
   PrintArr(calchmac,32);
 
   //check HMAC
-  if(strcmp(hmac, calchmac))
+  if(memcmp(hmac,calchmac,32))
   {
       uart_write_str(UART2, "HMAC authentication failed");
       return;
@@ -377,13 +351,7 @@ void load_firmware(void)
   fw_release_message_address = (uint8_t *) (FW_BASE + size);
 
   uart_write(UART1, OK); // Acknowledge the metadata.
-    
-  if(data_index != size+20)
-  {
-        uart_write_str(UART2,"size different");
-        nl(UART2);
-        return;
-  }
+   
       
   if(DecryptAesGCM(data,data_index,1))
   {

@@ -20,7 +20,7 @@ def protect_firmware(infile, outfile, version, message):
     with open(bootloader/"secret_build_output.txt", 'rb') as k:
         key1 = k.read(16)
         iv = k.read(16)
-        hmackey1 = k.read(16)
+        hmackey1 = k.read(32)
     
     #Encrypt with AES GCM mode
     cipher_encrypt = AES.new(key1, AES.MODE_GCM, nonce=iv)
@@ -43,7 +43,7 @@ def protect_firmware(infile, outfile, version, message):
     ciphertext, tag = cipher_encrypt.encrypt_and_digest(firmware_and_message)
     
     #new HMAC stuff
-    hmac_input = tag + ciphertext
+    hmac_input = tag # + ciphertext
     h = hmac.new(hmackey1, hmac_input, hashlib.sha256)
     hash_result=h.digest()
     #Write the encrypted data to outfile, tag and ciphertext will be in the same file
@@ -58,6 +58,8 @@ def protect_firmware(infile, outfile, version, message):
     print("Metadata:".encode("utf-8") + metadata)
     print("Tag: ".encode("utf-8") + tag)
     print("HMAC: ".encode("utf-8") + hash_result)
+    print("HMAC key: ".encode("utf-8") + hmackey1)
+
 
 
 if __name__ == '__main__':
