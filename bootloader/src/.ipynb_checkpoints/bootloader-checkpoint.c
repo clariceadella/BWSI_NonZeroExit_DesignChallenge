@@ -51,13 +51,14 @@ uint8_t *fw_release_message_address;
 
 // Firmware Buffer
 unsigned char data[30*FLASH_PAGESIZE]={'\0'};
+unsigned char datawithtag[30*FLASH_PAGESIZE]={'\0'};
 
 //decryption variables
 unsigned char key[16]=KEY;
 unsigned char iv[16]=IV;
 unsigned char tag[16];
 
-size_t key_len=16, cipher_len=FLASH_PAGESIZE, iv_len=16;
+size_t key_len=16, cipher_len=FLASH_PAGESIZE, iv_len=16, hmackey_len=16;
 
 
 br_aes_ct_ctr_keys bc;
@@ -91,11 +92,23 @@ void InitializeAES()
     //initialize the gcm context
 	br_gcm_init(&gc,&bc.vtable,br_ghash_ctmul32);
     br_gcm_reset(&gc, iv, iv_len);
-
-
 }
+   
+int HMACFunction(char* key, int key_len, char* data, int len, char* out) 
+{    
+    br_hmac_key_context kc;    
+    br_hmac_context ctx;    
+    br_hmac_key_init(&kc, &br_sha256_vtable, key, key_len);    
+    br_hmac_init(&ctx, &kc, 0);  
+    br_hmac_update(&ctx, data, len);    
+    br_hmac_out(&ctx, out);  
+        
+    return 32;
+}
+
 int DecryptAesGCM(unsigned char *data, int length, int check_tag)
 {
+    
 	//decrypt first
 	br_gcm_run(&gc, 0, data, length);
     //returning the tag check
@@ -188,6 +201,8 @@ void load_firmware(void)
   uint32_t version = 0;
   uint32_t size = 0;
   unsigned char buffer[16];
+  unsigned char hmac[16];
+  unsigned char calchmac[16];
     
   rcv = uart_read(UART1, BLOCKING, &read);
   frame_length = (int)rcv << 8;
@@ -197,8 +212,20 @@ void load_firmware(void)
   for(int i=0;i<16;i++)
   {
       rcv_8 = uart_read(UART1, BLOCKING, &read);
+      hmac[i]=rcv_8;
+  }
+
+  rcv = uart_read(UART1, BLOCKING, &read);
+  frame_length = (int)rcv << 8;
+  rcv = uart_read(UART1, BLOCKING, &read);
+  frame_length |= (int)rcv;  
+    
+  for(int i=0;i<16;i++)
+  {
+      rcv_8 = uart_read(UART1, BLOCKING, &read);
       tag[i]=rcv_8;
   }
+      
   //ackowledge the tag
   uart_write(UART1, OK);
     
@@ -315,13 +342,23 @@ void load_firmware(void)
     uart_write(UART1, OK); // Acknowledge the frame.
   } // while(1)
 
-
+  //calculate HMAC
+  memcpy(datawithtag, tag, 16);
+  memcpy(datawithtag + 16, data, data_index);
+  HMACFunction(HMAC, 16, datawithtag, data_index + 16, calchmac);
+  
+  //check HMAC
+  if(strcmp(hmac, calchmac))
+  {
+      uart_write_str(UART2, "HMAC authentication failed");
+      return;
+  }
+    
   if(data_index != size+20)
   {
         uart_write_str(UART2,"size different");
         nl(UART2);
         return;
-
   }
       
   if(DecryptAesGCM(data,data_index,1))

@@ -42,17 +42,18 @@ def make_bootloader():
     os.chdir(bootloader)
     
     # Generates the keys
-    
     key_aes = Crypto.Random.get_random_bytes(16)
     iv = Crypto.Random.get_random_bytes(16)
     
+    #new HMAC stuff
+    hmackey = Crypto.Random.get_random_bytes(16)
+    
     with open('secret_build_output.txt', 'wb') as fp:
-        fp.write(key_aes + iv)
+        fp.write(key_aes + iv + hmackey)
         
     subprocess.call('make clean', shell=True)
-    status = subprocess.call(f'make KEY={to_c_array(key_aes)} IV={to_c_array(iv)}', shell=True)
+    status = subprocess.call(f'make KEY={to_c_array(key_aes)} IV={to_c_array(iv)} HMAC={to_c_array(hmackey)}', shell=True)
         
-
     # Return True if make returned 0, otherwise return False.
     return (status == 0)
 

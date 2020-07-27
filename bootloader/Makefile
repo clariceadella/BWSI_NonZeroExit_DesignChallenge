@@ -65,6 +65,7 @@ include ./makedefs
 CFLAGS+=-g
 CFLAGS+=-D KEY=${KEY}
 CFLAGS+=-D IV=${IV}
+CFLAGS+=-D HMAC=${HMAC}
 #
 # Where to find header files that do not live in this directory.
 #

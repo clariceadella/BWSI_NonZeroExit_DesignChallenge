@@ -54,7 +54,6 @@ def make_bootloader():
     subprocess.call('make clean', shell=True)
     status = subprocess.call(f'make KEY={to_c_array(key_aes)} IV={to_c_array(iv)} HMAC={to_c_array(hmackey)}', shell=True)
         
-
     # Return True if make returned 0, otherwise return False.
     return (status == 0)
 
