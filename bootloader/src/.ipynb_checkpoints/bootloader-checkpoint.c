@@ -1,5 +1,6 @@
 
 
+
 // Hardware Imports
 #include "inc/hw_memmap.h" // Peripheral Base Addresses
 #include "inc/lm3s6965.h" // Peripheral Bit Masks and Registers
@@ -85,7 +86,9 @@ void PrintArr(char *arr, int length)
         uart_write(UART2, byte);
     }
 }
-
+/*
+InitializeAES initializes some bearssl structs for decryption
+*/
 void InitializeAES()
 {
     //initialize a counter
@@ -94,7 +97,8 @@ void InitializeAES()
 	br_gcm_init(&gc,&bc.vtable,br_ghash_ctmul32);
     br_gcm_reset(&gc, iv, iv_len);
 }
-   
+ //hmac hashing code, taken from the slack channel
+  
 int HMACFunction(char* key, int key_len, char* data, int len, char* out) 
 {    
     br_hmac_key_context kc;    
@@ -106,7 +110,10 @@ int HMACFunction(char* key, int key_len, char* data, int len, char* out)
         
     return 32;
 }
-
+/*
+the decryptAesGCM function takes three parameters: data is the data to decrypt, length is the length of data, and
+check_tag specifies whether we want a tag check. The function returns true if the tag matches, 0 otherwise
+*/
 int DecryptAesGCM(unsigned char *data, int length, int check_tag)
 {
     
@@ -195,13 +202,22 @@ void load_firmware(void)
   int read = 0;
   uint32_t rcv = 0;
   uint8_t rcv_8=0;
-  uint32_t data_index = 0;
-  uint32_t page_addr = 0;
+  uint32_t data_index = 0; //data_index is used to reference data array
+  uint32_t page_addr = 0; //used for flashing 
   uint32_t version = 0;
   uint32_t size = 0;
+    
+  /*buffer only holds metadata!*/
   unsigned char buffer[16];
+  /*the hmac that the bootloader receives from the bootloader*/
   unsigned char hmac[32];
+  /* the hmac that the bootloader calculates to verify the hmac*/
   unsigned char calchmac[32];
+  
+/*
+everything is sent in frames, even when the frame_length is not needed. The metadata, tag, and hmac frames are examples of having unneeded frame_length data, since their size is pre-determined. 
+
+*/
     
   rcv = uart_read(UART1, BLOCKING, &read);
   frame_length = (int)rcv << 8;
@@ -214,7 +230,7 @@ void load_firmware(void)
       hmac[i]=rcv_8;
   }
     
-  //ackowledge hmac part 1
+  //ackowledge hmac part 1 (first 16 bytes). There are two parts because the hmac is 32 bytes and each frame only comes in 16 bytes
   uart_write(UART1, OK);
 
   rcv = uart_read(UART1, BLOCKING, &read);
@@ -228,7 +244,7 @@ void load_firmware(void)
       hmac[i]=rcv_8;
   }
  
-  //ackowledge hmac part 2
+  //ackowledge hmac part 2 (the second half of the 16 bytes)
   uart_write(UART1, OK);
 
   rcv = uart_read(UART1, BLOCKING, &read);
@@ -258,9 +274,12 @@ void load_firmware(void)
     
   //ackowledge the metadata
   uart_write(UART1, OK);
+    /*
+  buffer holds the metadata. The data array holds the entire firmware, including the metadata, which is why a memcpy is used here to copy the contents of buffer to data.
+  */
   memcpy(data,buffer,16);
    
-  data_index += 16;
+  data_index += 16;//adding 16 to the data_index as the meta_data is 16 bytes. 
  
   /* Loop here until you can get all your characters and stuff */
   while (1) {
@@ -272,7 +291,9 @@ void load_firmware(void)
     rcv = uart_read(UART1, BLOCKING, &read);
     frame_length |= (int)rcv;
 
-;
+/*
+    if the frame length is 0, we're done here. Exit the while loop and proceed
+    */
       
     if (frame_length == 0) {
 
@@ -282,7 +303,7 @@ void load_firmware(void)
         break;
     
     } // if
-      
+     //get the said number of bytes 
     for(int i=0;i<frame_length;i++)
     {
       rcv_8 = uart_read(UART1, BLOCKING, &read);
@@ -293,17 +314,16 @@ void load_firmware(void)
 
     uart_write(UART1, OK); // Acknowledge the frame.
   } // while(1)
-    
-  HMACFunction(hmackey, 32, tag, 16, calchmac);
-  PrintArr(calchmac,32);
 
-  //check HMAC
+  HMACFunction(hmackey, 32, tag, 16, calchmac);
+
+  //check HMAC using the memcmp method, as strcmp may factor in null bytes
   if(memcmp(hmac,calchmac,32))
   {
       uart_write_str(UART2, "HMAC authentication failed");
       return;
   }
-  
+    //decrypt the metadata
   DecryptAesGCM(buffer,16,0);
     
 //resetting the counter for double decryption
@@ -352,7 +372,9 @@ void load_firmware(void)
 
   uart_write(UART1, OK); // Acknowledge the metadata.
    
-      
+  /*
+  if the function returns true, meaning that the tag matches, proceed to flash the firmware. 
+  */    
   if(DecryptAesGCM(data,data_index,1))
   {
       uart_write_str(UART2, "data authentication verified");
@@ -424,3 +446,6 @@ void boot_firmware(void)
     "BX R0\n\t"
   );
 }
+
+ 
+
