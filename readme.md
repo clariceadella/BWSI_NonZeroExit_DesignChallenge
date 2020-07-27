@@ -9,7 +9,7 @@ We designed a secure firmware distribution system using encryption protocols suc
 
 ## Installation
 1. Install the requirements above
-2. Clone the repostiroy
+2. Clone the repository
 
 ## Running the Program
 1. Navigate to the `design-challenge-non-zero-exit` folder
