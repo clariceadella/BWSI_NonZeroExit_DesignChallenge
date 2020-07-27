@@ -43,7 +43,7 @@ def protect_firmware(infile, outfile, version, message):
     ciphertext, tag = cipher_encrypt.encrypt_and_digest(firmware_and_message)
     
     #new HMAC stuff
-    hmac_input = tag # + ciphertext
+    hmac_input = tag  + ciphertext
     h = hmac.new(hmackey1, hmac_input, hashlib.sha256)
     hash_result=h.digest()
     #Write the encrypted data to outfile, tag and ciphertext will be in the same file

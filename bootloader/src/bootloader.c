@@ -314,8 +314,15 @@ everything is sent in frames, even when the frame_length is not needed. The meta
 
     uart_write(UART1, OK); // Acknowledge the frame.
   } // while(1)
-
-  HMACFunction(hmackey, 32, tag, 16, calchmac);
+    
+  /*
+  the hmac hashes both the tag and the firmware itself, but the data buffer only holds the firmware.
+  We need to combine them both to a single buffer to caculate the correct hmac
+  */
+    
+  memcpy(datawithtag, tag,16);
+  memcpy(datawithtag+16, data, data_index);
+  HMACFunction(hmackey, 32, datawithtag, data_index+16, calchmac);
 
   //check HMAC using the memcmp method, as strcmp may factor in null bytes
   if(memcmp(hmac,calchmac,32))
