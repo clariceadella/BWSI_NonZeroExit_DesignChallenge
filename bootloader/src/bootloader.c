@@ -55,9 +55,10 @@ unsigned char data[30*FLASH_PAGESIZE]={'\0'};
 //decryption variables
 unsigned char key[16]=KEY;
 unsigned char iv[16]=IV;
+unsigned char hmackey[16]=HMAC; //new HMAC part
 unsigned char tag[16];
 
-size_t key_len=16, cipher_len=FLASH_PAGESIZE, iv_len=16;
+size_t key_len=16, cipher_len=FLASH_PAGESIZE, iv_len=16, hmackey_len=16;
 
 
 br_aes_ct_ctr_keys bc;
@@ -96,6 +97,12 @@ void InitializeAES()
 }
 int DecryptAesGCM(unsigned char *data, int length, int check_tag)
 {
+    //verify HMAC first before decrypting to better protect from DPA attacks
+    //translate the following basic steps to c later:
+    //HMAC.new function with the secret key and SHA256
+    //update the previous line, argument is the msg received
+    //try .hexverify(mac) to determine if there is a match, if so, continue on to the tag
+    
 	//decrypt first
 	br_gcm_run(&gc, 0, data, length);
     //returning the tag check
