@@ -41,14 +41,12 @@ def make_bootloader():
     bootloader = FILE_DIR / '..' / 'bootloader'
     os.chdir(bootloader)
     
-<<<<<<< HEAD
     # Generates the key and the IV
     
     key_aes = Crypto.Random.get_random_bytes(16)
     iv = Crypto.Random.get_random_bytes(16)
     
     # Writes the key and IV to the secret_build_output.txt file for access by the firmware.
-=======
     # Generates the keys
     key_aes = Crypto.Random.get_random_bytes(16)
     iv = Crypto.Random.get_random_bytes(16)
@@ -56,7 +54,6 @@ def make_bootloader():
     #new HMAC stuff
     hmackey = Crypto.Random.get_random_bytes(32)
     
->>>>>>> e58ad45257de55a473a9f41c2f060f8b1b56f198
     with open('secret_build_output.txt', 'wb') as fp:
         fp.write(key_aes + iv + hmackey)
         
