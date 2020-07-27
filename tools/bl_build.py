@@ -41,14 +41,16 @@ def make_bootloader():
     bootloader = FILE_DIR / '..' / 'bootloader'
     os.chdir(bootloader)
     
-    # Generates the keys
+    # Generates the key and the IV
     
     key_aes = Crypto.Random.get_random_bytes(16)
     iv = Crypto.Random.get_random_bytes(16)
     
+    # Writes the key and IV to the secret_build_output.txt file for access by the firmware.
     with open('secret_build_output.txt', 'wb') as fp:
         fp.write(key_aes + iv)
         
+    # Allows the keys to be passed on to bootloader.c
     subprocess.call('make clean', shell=True)
     status = subprocess.call(f'make KEY={to_c_array(key_aes)} IV={to_c_array(iv)}', shell=True)
         
