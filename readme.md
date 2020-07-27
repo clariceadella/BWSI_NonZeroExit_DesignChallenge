@@ -36,4 +36,4 @@ The firmware loads the tag, the metadata, and then the firmware into the bootloa
 
 ### Flow Diagram
 
-![Alt text](design-challenge-non-zero-exit/Flowchart.png?raw=true "Flowchart")
+[Flow Diagram](design-challenge-non-zero-exit/Flowchart.png)
