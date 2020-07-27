@@ -46,7 +46,7 @@ def make_bootloader():
     iv = Crypto.Random.get_random_bytes(16)
     
     #new HMAC stuff
-    hmackey = Crypto.Random.get_random_bytes(16)
+    hmackey = Crypto.Random.get_random_bytes(32)
     
     with open('secret_build_output.txt', 'wb') as fp:
         fp.write(key_aes + iv + hmackey)

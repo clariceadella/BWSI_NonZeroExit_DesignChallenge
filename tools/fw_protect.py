@@ -5,9 +5,11 @@ Firmware Bundle-and-Protect Tool
 import argparse
 import struct
 import pathlib
+import hashlib
+import hmac
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import pad, unpad
-from Crypto.Hash import HMAC, SHA256
+from Crypto.Hash import SHA256
 
 FILE_DIR = pathlib.Path(__file__).parent.absolute()
 bootloader = FILE_DIR / '..' / 'bootloader'
@@ -41,12 +43,12 @@ def protect_firmware(infile, outfile, version, message):
     ciphertext, tag = cipher_encrypt.encrypt_and_digest(firmware_and_message)
     
     #new HMAC stuff
-    new = tag + ciphertext
-    h = HMAC.new(hmackey1, len(new), digestmod=SHA128)
-    
+    hmac_input = tag + ciphertext
+    h = hmac.new(hmackey1, hmac_input, hashlib.sha256)
+    hash_result=h.digest()
     #Write the encrypted data to outfile, tag and ciphertext will be in the same file
     with open(outfile, 'wb+') as outfile:
-        outfile.write(h.digest())
+        outfile.write(hash_result)
         outfile.write(tag)
         outfile.write(ciphertext)
     
@@ -55,6 +57,8 @@ def protect_firmware(infile, outfile, version, message):
     print("Nonce: ".encode("utf-8") + iv)
     print("Metadata:".encode("utf-8") + metadata)
     print("Tag: ".encode("utf-8") + tag)
+    print("HMAC: ".encode("utf-8") + hash_result)
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Firmware Update Tool')

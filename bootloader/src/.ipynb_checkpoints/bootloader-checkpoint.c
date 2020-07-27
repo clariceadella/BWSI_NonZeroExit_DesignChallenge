@@ -55,6 +55,7 @@ unsigned char datawithtag[30*FLASH_PAGESIZE]={'\0'};
 
 //decryption variables
 unsigned char key[16]=KEY;
+unsigned char hmackey[32]=HMAC;
 unsigned char iv[16]=IV;
 unsigned char tag[16];
 
@@ -201,8 +202,8 @@ void load_firmware(void)
   uint32_t version = 0;
   uint32_t size = 0;
   unsigned char buffer[16];
-  unsigned char hmac[16];
-  unsigned char calchmac[16];
+  unsigned char hmac[32];
+  unsigned char calchmac[32];
     
   rcv = uart_read(UART1, BLOCKING, &read);
   frame_length = (int)rcv << 8;
@@ -214,6 +215,26 @@ void load_firmware(void)
       rcv_8 = uart_read(UART1, BLOCKING, &read);
       hmac[i]=rcv_8;
   }
+    
+  //ackowledge hmac part 1
+  uart_write(UART1, OK);
+
+  rcv = uart_read(UART1, BLOCKING, &read);
+  frame_length = (int)rcv << 8;
+  rcv = uart_read(UART1, BLOCKING, &read);
+  frame_length |= (int)rcv;
+
+  for(int i=16;i<32;i++)
+  {
+      rcv_8 = uart_read(UART1, BLOCKING, &read);
+      hmac[i]=rcv_8;
+  }
+//   PrintArr(hmac,32);
+//   uart_write_str(UART2, "the hmac received is:");
+//   uart_write_str(UART2, hmac);
+ 
+  //ackowledge hmac part 2
+  uart_write(UART1, OK);
 
   rcv = uart_read(UART1, BLOCKING, &read);
   frame_length = (int)rcv << 8;
@@ -258,13 +279,62 @@ void load_firmware(void)
   //ackowledge the metadata
   uart_write(UART1, OK);
   memcpy(data,buffer,16);
+   
+  data_index += 16;
+ 
+  /* Loop here until you can get all your characters and stuff */
+  while (1) {
+    uint32_t frame_length=0;
+      
+    //Get two bytes for the length.
+    rcv = uart_read(UART1, BLOCKING, &read);
+    frame_length = (int)rcv << 8;
+    rcv = uart_read(UART1, BLOCKING, &read);
+    frame_length |= (int)rcv;
 
+;
+      
+    if (frame_length == 0) {
+
+        uart_write(UART1, OK);
+        uart_write_str(UART2,"all frames received\n");
+        nl(UART2);
+        break;
+    
+    } // if
+      
+    for(int i=0;i<frame_length;i++)
+    {
+      rcv_8 = uart_read(UART1, BLOCKING, &read);
+//       uart_write_str(UART2, "Bootloader received: ");
+//       uart_write_hex(UART2,(unsigned char)rcv_8);
+//       nl(UART2);
+      data[data_index]=rcv_8;
+      data_index ++;
+    }     
+
+    uart_write(UART1, OK); // Acknowledge the frame.
+  } // while(1)
+
+  //calculate HMAC
+  memcpy(datawithtag, tag, 16);
+  unsigned char *data_firmware=datawithtag+16;
+  memcpy(data_firmware, data, data_index);
+  HMACFunction(hmackey, 32, datawithtag, data_index + 16, calchmac);
+  PrintArr(calchmac,32);
+
+  //check HMAC
+  if(strcmp(hmac, calchmac))
+  {
+      uart_write_str(UART2, "HMAC authentication failed");
+      return;
+  }
+  
   DecryptAesGCM(buffer,16,0);
     
 //resetting the counter for double decryption
   br_gcm_reset(&gc, iv, iv_len);
-  
-  data_index += 16;
+ 
     
   // Get version.
   rcv = buffer[0];
@@ -307,52 +377,6 @@ void load_firmware(void)
   fw_release_message_address = (uint8_t *) (FW_BASE + size);
 
   uart_write(UART1, OK); // Acknowledge the metadata.
-  uart_write_str(UART2, "entering loop");
-  /* Loop here until you can get all your characters and stuff */
-  while (1) {
-    uint32_t frame_length=0;
-      
-    //Get two bytes for the length.
-    rcv = uart_read(UART1, BLOCKING, &read);
-    frame_length = (int)rcv << 8;
-    rcv = uart_read(UART1, BLOCKING, &read);
-    frame_length |= (int)rcv;
-
-;
-      
-    if (frame_length == 0) {
-
-        uart_write(UART1, OK);
-        uart_write_str(UART2,"all frames received\n");
-        nl(UART2);
-        break;
-    
-    } // if
-      
-    for(int i=0;i<frame_length;i++)
-    {
-      rcv_8 = uart_read(UART1, BLOCKING, &read);
-//       uart_write_str(UART2, "Bootloader received: ");
-//       uart_write_hex(UART2,(unsigned char)rcv_8);
-//       nl(UART2);
-      data[data_index]=rcv_8;
-      data_index ++;
-    }     
-
-    uart_write(UART1, OK); // Acknowledge the frame.
-  } // while(1)
-
-  //calculate HMAC
-  memcpy(datawithtag, tag, 16);
-  memcpy(datawithtag + 16, data, data_index);
-  HMACFunction(HMAC, 16, datawithtag, data_index + 16, calchmac);
-  
-  //check HMAC
-  if(strcmp(hmac, calchmac))
-  {
-      uart_write_str(UART2, "HMAC authentication failed");
-      return;
-  }
     
   if(data_index != size+20)
   {
