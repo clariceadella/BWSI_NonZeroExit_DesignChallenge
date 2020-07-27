@@ -51,13 +51,15 @@ uint8_t *fw_release_message_address;
 
 // Firmware Buffer
 unsigned char data[30*FLASH_PAGESIZE]={'\0'};
+unsigned char datawithtag[30*FLASH_PAGESIZE]={'\0'};
 
 //decryption variables
 unsigned char key[16]=KEY;
+unsigned char hmackey[32]=HMAC;
 unsigned char iv[16]=IV;
 unsigned char tag[16];
 
-size_t key_len=16, cipher_len=FLASH_PAGESIZE, iv_len=16;
+size_t key_len=16, cipher_len=FLASH_PAGESIZE, iv_len=16, hmackey_len=16;
 
 
 br_aes_ct_ctr_keys bc;
@@ -91,19 +93,29 @@ void InitializeAES()
     //initialize the gcm context
 	br_gcm_init(&gc,&bc.vtable,br_ghash_ctmul32);
     br_gcm_reset(&gc, iv, iv_len);
-
-
 }
+   
+int HMACFunction(char* key, int key_len, char* data, int len, char* out) 
+{    
+    br_hmac_key_context kc;    
+    br_hmac_context ctx;    
+    br_hmac_key_init(&kc, &br_sha256_vtable, key, key_len);    
+    br_hmac_init(&ctx, &kc, 0);  
+    br_hmac_update(&ctx, data, len);    
+    br_hmac_out(&ctx, out);  
+        
+    return 32;
+}
+
 int DecryptAesGCM(unsigned char *data, int length, int check_tag)
 {
+    
 	//decrypt first
 	br_gcm_run(&gc, 0, data, length);
     //returning the tag check
     if(check_tag)
     {
-        //char arr[16];
-        //br_gcm_get_tag(&gc,arr);
-        //PrintArr(arr,16);
+      
         return br_gcm_check_tag(&gc, tag);
 
     }
@@ -188,6 +200,8 @@ void load_firmware(void)
   uint32_t version = 0;
   uint32_t size = 0;
   unsigned char buffer[16];
+  unsigned char hmac[32];
+  unsigned char calchmac[32];
     
   rcv = uart_read(UART1, BLOCKING, &read);
   frame_length = (int)rcv << 8;
@@ -197,25 +211,39 @@ void load_firmware(void)
   for(int i=0;i<16;i++)
   {
       rcv_8 = uart_read(UART1, BLOCKING, &read);
+      hmac[i]=rcv_8;
+  }
+    
+  //ackowledge hmac part 1
+  uart_write(UART1, OK);
+
+  rcv = uart_read(UART1, BLOCKING, &read);
+  frame_length = (int)rcv << 8;
+  rcv = uart_read(UART1, BLOCKING, &read);
+  frame_length |= (int)rcv;
+
+  for(int i=16;i<32;i++)
+  {
+      rcv_8 = uart_read(UART1, BLOCKING, &read);
+      hmac[i]=rcv_8;
+  }
+ 
+  //ackowledge hmac part 2
+  uart_write(UART1, OK);
+
+  rcv = uart_read(UART1, BLOCKING, &read);
+  frame_length = (int)rcv << 8;
+  rcv = uart_read(UART1, BLOCKING, &read);
+  frame_length |= (int)rcv;  
+    
+  for(int i=0;i<16;i++)
+  {
+      rcv_8 = uart_read(UART1, BLOCKING, &read);
       tag[i]=rcv_8;
   }
+      
   //ackowledge the tag
   uart_write(UART1, OK);
-    
-  //debug the tag
-  uart_write_str(UART2,"Bootloader received tag: ");
-  PrintArr(tag,16);
-
-//   uart_write_str(UART2, (char *)tag);
-  nl(UART2);
-  
-  uart_write_str(UART2,"Bootloader received key: ");
-  uart_write_str(UART2, (char *)key);
-  nl(UART2); 
-    
-  uart_write_str(UART2,"Bootloader received iv: ");
-  uart_write_str(UART2, (char *)iv);
-  nl(UART2);
     
   rcv = uart_read(UART1, BLOCKING, &read);
   frame_length = (int)rcv << 8;
@@ -231,13 +259,56 @@ void load_firmware(void)
   //ackowledge the metadata
   uart_write(UART1, OK);
   memcpy(data,buffer,16);
+   
+  data_index += 16;
+ 
+  /* Loop here until you can get all your characters and stuff */
+  while (1) {
+    uint32_t frame_length=0;
+      
+    //Get two bytes for the length.
+    rcv = uart_read(UART1, BLOCKING, &read);
+    frame_length = (int)rcv << 8;
+    rcv = uart_read(UART1, BLOCKING, &read);
+    frame_length |= (int)rcv;
 
+;
+      
+    if (frame_length == 0) {
+
+        uart_write(UART1, OK);
+        uart_write_str(UART2,"all frames received\n");
+        nl(UART2);
+        break;
+    
+    } // if
+      
+    for(int i=0;i<frame_length;i++)
+    {
+      rcv_8 = uart_read(UART1, BLOCKING, &read);
+
+      data[data_index]=rcv_8;
+      data_index ++;
+    }     
+
+    uart_write(UART1, OK); // Acknowledge the frame.
+  } // while(1)
+    
+  HMACFunction(hmackey, 32, tag, 16, calchmac);
+  PrintArr(calchmac,32);
+
+  //check HMAC
+  if(memcmp(hmac,calchmac,32))
+  {
+      uart_write_str(UART2, "HMAC authentication failed");
+      return;
+  }
+  
   DecryptAesGCM(buffer,16,0);
     
 //resetting the counter for double decryption
   br_gcm_reset(&gc, iv, iv_len);
-  
-  data_index += 16;
+ 
     
   // Get version.
   rcv = buffer[0];
@@ -280,49 +351,7 @@ void load_firmware(void)
   fw_release_message_address = (uint8_t *) (FW_BASE + size);
 
   uart_write(UART1, OK); // Acknowledge the metadata.
-  uart_write_str(UART2, "entering loop");
-  /* Loop here until you can get all your characters and stuff */
-  while (1) {
-    uint32_t frame_length=0;
-      
-    //Get two bytes for the length.
-    rcv = uart_read(UART1, BLOCKING, &read);
-    frame_length = (int)rcv << 8;
-    rcv = uart_read(UART1, BLOCKING, &read);
-    frame_length |= (int)rcv;
-
-;
-      
-    if (frame_length == 0) {
-
-        uart_write(UART1, OK);
-        uart_write_str(UART2,"all frames received\n");
-        nl(UART2);
-        break;
-    
-    } // if
-      
-    for(int i=0;i<frame_length;i++)
-    {
-      rcv_8 = uart_read(UART1, BLOCKING, &read);
-//       uart_write_str(UART2, "Bootloader received: ");
-//       uart_write_hex(UART2,(unsigned char)rcv_8);
-//       nl(UART2);
-      data[data_index]=rcv_8;
-      data_index ++;
-    }     
-
-    uart_write(UART1, OK); // Acknowledge the frame.
-  } // while(1)
-
-
-  if(data_index != size+20)
-  {
-        uart_write_str(UART2,"size different");
-        nl(UART2);
-        return;
-
-  }
+   
       
   if(DecryptAesGCM(data,data_index,1))
   {

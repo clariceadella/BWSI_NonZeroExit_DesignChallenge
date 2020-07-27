@@ -33,4 +33,4 @@ This tool sends the metadata, firmware, and message to the fw_update.py tool, en
 
 ### fw_update.py
 
-The firmware loads the tag, the metadata, and then the firmware into the bootloader. The firmware is loaded into the firmware in 18 byte frames, with the first two bytes being a short indicating the length of the firmware.]
+The firmware loads the tag, the metadata, and then the firmware into the bootloader. The firmware is loaded into the firmware in 18 byte frames, with the first two bytes being a short indicating the length of the data.
