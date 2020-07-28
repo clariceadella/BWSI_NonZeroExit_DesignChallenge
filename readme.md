@@ -16,7 +16,7 @@ We designed a secure firmware distribution system using encryption protocols suc
 2. Run the following
 `python3 tools/bl_build.py`
 
-`python3 tools/fw_protect.py --infile firmware/firmware/gcc/main.bin --outfile firmwareblob.blob --version VRESION --message MESSAGE
+`python3 tools/fw_protect.py --infile firmware/firmware/gcc/main.bin --outfile firmwareblob.blob --version VRESION --message MESSAGE`
 
 `python3 tools/bl_emulate.py`
 
@@ -24,7 +24,7 @@ We designed a secure firmware distribution system using encryption protocols suc
 
 ###  bl_build.py
 
-This tool generates a 16 byte key, a 16 byte IV, and a 32-byte Key. The key and IV are both used in the AES encryption in GCM mode. The 32-byte key is used to generate the HMAC. The bootloader is also built in this tool.
+This tool generates a 16 byte key and 16 byte IV, both of which are used in the AES encryption. The bootloader is also built in this tool.
 
 ### fw_protect.py
 
