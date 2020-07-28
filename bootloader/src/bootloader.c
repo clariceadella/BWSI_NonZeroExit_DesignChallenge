@@ -51,8 +51,8 @@ uint16_t *fw_size_address = (uint16_t *) (METADATA_BASE + 2);
 uint8_t *fw_release_message_address;
 
 // Firmware Buffer
-unsigned char data[35*FLASH_PAGESIZE]={'\0'};
-unsigned char datawithtag[35*FLASH_PAGESIZE]={'\0'};
+unsigned char data[30*FLASH_PAGESIZE]={'\0'};
+unsigned char datawithtag[30*FLASH_PAGESIZE]={'\0'};
 
 //decryption variables
 unsigned char key[16]=KEY;

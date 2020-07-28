@@ -16,7 +16,7 @@ We designed a secure firmware distribution system using encryption protocols suc
 2. Run the following
 `python3 tools/bl_build.py`
 
-`python3 tools/fw_protect.py --infile firmware/firmware/gcc/main.bin --outfile firmwareblob.blob --version 3 --message "test"`
+`python3 tools/fw_protect.py --infile firmware/firmware/gcc/main.bin --outfile firmwareblob.blob --version VRESION --message MESSAGE
 
 `python3 tools/bl_emulate.py`
 
