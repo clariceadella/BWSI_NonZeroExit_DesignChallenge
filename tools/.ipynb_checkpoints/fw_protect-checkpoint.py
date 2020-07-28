@@ -11,12 +11,13 @@ from Crypto.Cipher import AES
 from Crypto.Util.Padding import pad, unpad
 from Crypto.Hash import SHA256
 
+#change directory, gets the path to the bootloader
 FILE_DIR = pathlib.Path(__file__).parent.absolute()
 bootloader = FILE_DIR / '..' / 'bootloader'
 
 def protect_firmware(infile, outfile, version, message):
     
-    #Read the file with the key and iv
+    #Read the file with the AES key, iv, and HMAC key
     with open(bootloader/"secret_build_output.txt", 'rb') as k:
         key1 = k.read(16)
         iv = k.read(16)
@@ -31,22 +32,21 @@ def protect_firmware(infile, outfile, version, message):
     
     #Pack version and size into two little-endian shorts, pad the metadata
     metadata = struct.pack('>HH', version, len(firmware))
-    print("the size is"+str(len(firmware)))
+    print("the size is" + str(len(firmware)))
     metadata = pad(metadata, 16)
     
-    #Append metadata and null-terminated message to end of firmware
+    #Append the metadata and firmware 
     firmware_and_message = metadata + firmware + message.encode()
 
-    #Append the metadata and firmware together, add a tag 
-    #cipher_encrypt.update(metadata)
-    #cipher_encrypt.update(firmware_and_message)
+    #Encrypt the the firmware and message, generate the corresponding tag
     ciphertext, tag = cipher_encrypt.encrypt_and_digest(firmware_and_message)
     
-    #new HMAC stuff
-    hmac_input = tag  + ciphertext
+    #new HMAC stuff (creates HMAC for both the tag and ciphertext combined)
+    hmac_input = tag + ciphertext
     h = hmac.new(hmackey1, hmac_input, hashlib.sha256)
-    hash_result=h.digest()
-    #Write the encrypted data to outfile, tag and ciphertext will be in the same file
+    hash_result = h.digest()
+    
+    #Write the hash result, tag, and encrypted data to outfile
     with open(outfile, 'wb+') as outfile:
         outfile.write(hash_result)
         outfile.write(tag)

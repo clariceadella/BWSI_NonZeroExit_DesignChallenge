@@ -13,12 +13,6 @@ A frame consists of two sections:
 1. Two bytes for the length of the data section
 2. A data section of length defined in the length section
 
-[ 0x02 ]  [ variable ]
---------------------
-| Length | Data... |
---------------------
-     FIRMWARE
-
 In our case, the data is from one line of the Intel Hex formated .hex file
 
 We write a frame to the bootloader, then wait for it to respond with an
