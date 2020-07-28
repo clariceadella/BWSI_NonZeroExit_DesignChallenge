@@ -1,30 +1,24 @@
 #!/usr/bin/env python
-
-#    Tag        (Metadata   Padding)   (Length    Firmware) 
-# ==========================================================
-# |  16 Bytes  |( 4 Bytes |12 Bytes)| ( 2 bytes | 16 Bytes) | cont......
-# ==========================================================
-# 
-
-"""
-Firmware Updater Tool
-
-A frame consists of two sections:
-1. Two bytes for the length of the data section
-2. A data section of length defined in the length section
-
-[ 0x02 ]  [ variable ]
---------------------
-| Length | Data... |
---------------------
-     FIRMWARE
-
-In our case, the data is from one line of the Intel Hex formated .hex file
-
-We write a frame to the bootloader, then wait for it to respond with an
-OK message so we can write the next frame. The OK message in this case is
-just a zero
-"""
+#
+# UPDATE TOOL DIAGRAM
+#
+#                                                     
+#       HMAC          Tag          (Metadata   Padding)       Firmware 
+# ================================================================================
+# |   32 Bytes    |  16 Bytes    | ( 4 Bytes  12 Bytes)  |    16 Bytes    | cont...
+# =================================================================================
+#
+# Every 16 Bytes of data is packed with the length of that data. 
+# Therefore, the updater tool sends the bootloader 18 Byte frames: 
+#
+#     Length          Data
+# ============================
+# |   2 Bytes   |  16 Bytes  |
+# ============================
+#
+# We write a frame to the bootloader, then wait for it to respond with an
+# OK message so we can write the next frame. The OK message in this case is
+# just a zero
 
 import argparse
 import struct
