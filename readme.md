@@ -1,5 +1,5 @@
 # BWSI Embedded Security & Hardware Hacking Design Challenge
-We designed a secure firmware distribution system using encryption protocols such as AES in GCM mode and HMAC.
+This design is by team Non-zero Exit which is made up of Alice, Clarice, Luke, and Maddie. Together we designed a secure firmware distribution system for a self-driving car using encryption protocols such as AES in GCM mode and HMAC.
 
 ## Requirements
 * Python 3
@@ -28,7 +28,7 @@ This tool generates a 16 byte key and 16 byte IV, both of which are used in the 
 
 ### fw_protect.py
 
-This tool sends the metadata, firmware, and message to the fw_update.py tool, encrypted under AES in GCM mode. It also attaches an HMAC for an additional layer of authentication.
+This tool sends the metadata, firmware, and message to the fw_update.py tool, encrypted under AES in GCM mode. GCM was chosen because it checks the confidentiality, integrity, and authenticity of data. The tool also attaches an HMAC for an additional layer of authentication (this helps to protect from DPA attacks because the authenticity of the received data is verified before anything else is decrypted, making it difficult for attackers to gather enough data to pull the secret keys from).
 
 ### fw_update.py
 
