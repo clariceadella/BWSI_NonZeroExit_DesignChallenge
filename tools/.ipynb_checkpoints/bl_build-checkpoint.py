@@ -41,23 +41,16 @@ def make_bootloader():
     bootloader = FILE_DIR / '..' / 'bootloader'
     os.chdir(bootloader)
     
-    # Generates the key and the IV
-    
+    # Generates the AES key, iv, and HMAC key
     key_aes = Crypto.Random.get_random_bytes(16)
     iv = Crypto.Random.get_random_bytes(16)
-    
-    # Writes the key and IV to the secret_build_output.txt file for access by the firmware.
-    # Generates the keys
-    key_aes = Crypto.Random.get_random_bytes(16)
-    iv = Crypto.Random.get_random_bytes(16)
-    
-    #new HMAC stuff
     hmackey = Crypto.Random.get_random_bytes(32)
     
+    # Writes the AES key, iv, and HMAC key to the secret_build_output.txt file for access by our tools
     with open('secret_build_output.txt', 'wb') as fp:
         fp.write(key_aes + iv + hmackey)
         
-    # Allows the keys to be passed on to bootloader.c
+    # Allows the keys and iv to be passed on to bootloader.c
     subprocess.call('make clean', shell=True)
     status = subprocess.call(f'make KEY={to_c_array(key_aes)} IV={to_c_array(iv)} HMAC={to_c_array(hmackey)}', shell=True)
         
